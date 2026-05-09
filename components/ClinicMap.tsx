@@ -66,7 +66,7 @@ function MapWatcher({
   onMove,
 }: MapWatcherProps) {
   useMapEvents({
-    moveend: (e) => {
+    moveend: (e: any) => {
       const center = e.target.getCenter()
 
       onMove(center.lat, center.lng)
