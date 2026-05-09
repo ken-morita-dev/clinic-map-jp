@@ -11,6 +11,8 @@ import {
   ZoomControl,
 } from 'react-leaflet'
 
+const SafeMapContainer = MapContainer as any
+
 import L, { LeafletMouseEvent } from 'leaflet'
 
 type Clinic = {
@@ -233,7 +235,15 @@ export default function ClinicMap() {
       </div>
 
       {/* 地図 */}
-      <MapContainer
+      <SafeMapContainer
+  center={position}
+  zoom={14}
+  zoomControl={false}
+  style={{
+    height: '100vh',
+    width: '100%',
+  }}
+>
         center={position}
         zoom={14}
         zoomControl={false}
