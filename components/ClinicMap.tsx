@@ -228,61 +228,66 @@ export default function ClinicMap() {
         </div>
       </div>
 
-      {/* 地図（完全修正版ここ） */}
-      <SafeMapContainer
-        center={position}
-        zoom={14}
-        zoomControl={false}
-        style={{ height: '100vh', width: '100%' }}
-      >
-        <ZoomControl position="topright" />
+{/* 地図（完全修正版） */}
+<SafeMapContainer
+  center={position}
+  zoom={14}
+  zoomControl={false}
+  style={{ height: '100vh', width: '100%' }}
+>
+  <ZoomControl position="topright" />
 
-        <ChangeMapCenter position={position} />
+  <ChangeMapCenter position={position} />
 
-        <MapWatcher onMove={(lat, lng) => fetchClinics(lat, lng)} />
+  <MapWatcher onMove={(lat, lng) => fetchClinics(lat, lng)} />
 
-        <TileLayer
-          attribution="&copy; OpenStreetMap contributors"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+  <TileLayer
+    attribution="&copy; OpenStreetMap contributors"
+    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+  />
 
-        {clinics.map((clinic) => (
-          <Marker
-            key={clinic.place_id}
-            position={[
-              clinic.geometry.location.lat,
-              clinic.geometry.location.lng,
-            ]}
-            icon={
-              clinic.opening_hours?.open_now
-                ? redIcon
-                : blackIcon
-            }
-          >
-            <Popup>
-              <b>{clinic.name}</b>
-              <br />
-              {clinic.vicinity}
-              <br />
-              ⭐ {clinic.rating || 'なし'}
-              <br />
-              レビュー数 {clinic.user_ratings_total || 0}
-              <br />
-              <span
-                style={{
-                  color: clinic.opening_hours?.open_now
-                    ? 'red'
-                    : 'black',
-                }}
-              >
-                {clinic.opening_hours?.open_now
-                  ? '診療中'
-                  : '時間外'}
-              </span>
-            </Popup>
-          </Marker>
-        ))}
-      </SafeMapContainer>
+  {clinics.map((clinic) => (
+    <Marker
+      key={clinic.place_id}
+      position={[
+        clinic.geometry.location.lat,
+        clinic.geometry.location.lng,
+      ]}
+      icon={clinic.opening_hours?.open_now ? redIcon : blackIcon}
+    >
+      <Popup>
+        <b>{clinic.name}</b>
+        <br />
+        {clinic.vicinity}
+        <br />
+        ⭐ {clinic.rating || 'なし'}
+        <br />
+        レビュー数 {clinic.user_ratings_total || 0}
+        <br />
+        <span
+          style={{
+            color: clinic.opening_hours?.open_now ? 'red' : 'black',
+          }}
+        >
+          {clinic.opening_hours?.open_now ? '診療中' : '時間外'}
+        </span>
+
+        <br />
+        <br />
+
+        <a
+          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+            clinic.name + ' ' + clinic.vicinity
+          )}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Google Mapsで開く
+        </a>
+      </Popup>
+    </Marker>
+  ))}
+</SafeMapContainer>
     </div>
   )
 }
