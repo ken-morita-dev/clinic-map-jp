@@ -2,34 +2,20 @@
 
 import { useEffect, useState } from 'react'
 
-// ===============================
-// React-Leaflet
-// ===============================
 import {
   MapContainer,
   TileLayer,
   Marker,
   Popup,
-  useMapEvents,
   ZoomControl,
 } from 'react-leaflet'
 
 import L from 'leaflet'
 
 // ===============================
-// Leaflet標準ピン復活（重要）
+// Leaflet CSS（必須）
 // ===============================
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
-
-delete (L.Icon.Default.prototype as any)._getIconUrl
-
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-})
+import 'leaflet/dist/leaflet.css'
 
 // ===============================
 // 型
@@ -52,20 +38,25 @@ type Clinic = {
 }
 
 // ===============================
-// ピン（営業中 / 休診）
+// ★超重要：デフォルトピン（Vercel安定版）
 // ===============================
-const redIcon = new L.Icon({
+const defaultIcon = new L.Icon({
   iconUrl:
-    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl:
+    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   shadowUrl:
     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 })
 
-const blackIcon = new L.Icon({
+// ===============================
+// ピン（診療中）
+// ===============================
+const redIcon = new L.Icon({
   iconUrl:
-    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png',
+    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
   shadowUrl:
     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
   iconSize: [25, 41],
@@ -86,42 +77,6 @@ const categories = [
 ]
 
 // ===============================
-// 地図監視
-// ===============================
-function MapWatcher({
-  onMove,
-}: {
-  onMove: (lat: number, lng: number) => void
-}) {
-  useMapEvents({
-    moveend: (e: any) => {
-      const map = e.target
-      const center = map.getCenter()
-      onMove(center.lat, center.lng)
-    },
-  })
-
-  return null
-}
-
-// ===============================
-// 中心移動
-// ===============================
-function ChangeMapCenter({
-  position,
-}: {
-  position: [number, number]
-}) {
-  const map = useMapEvents({})
-
-  useEffect(() => {
-    map.setView(position)
-  }, [position, map])
-
-  return null
-}
-
-// ===============================
 // メイン
 // ===============================
 export default function ClinicMap() {
@@ -133,25 +88,16 @@ export default function ClinicMap() {
   const [keyword, setKeyword] = useState('')
   const [searchText, setSearchText] = useState('')
 
-  // ===============================
   // API取得
-  // ===============================
-  async function fetchClinics(
-    lat: number,
-    lng: number,
-    searchKeyword = keyword
-  ) {
+  async function fetchClinics(lat: number, lng: number, kw = keyword) {
     const res = await fetch(
-      `/api/clinics?lat=${lat}&lng=${lng}&keyword=${searchKeyword}`
+      `/api/clinics?lat=${lat}&lng=${lng}&keyword=${kw}`
     )
-
     const data = await res.json()
     setClinics(data.results || [])
   }
 
-  // ===============================
   // 地名検索
-  // ===============================
   async function searchPlace() {
     if (!searchText) return
 
@@ -174,9 +120,7 @@ export default function ClinicMap() {
     }
   }
 
-  // ===============================
   // 初期位置
-  // ===============================
   useEffect(() => {
     navigator.geolocation.getCurrentPosition((pos) => {
       const lat = pos.coords.latitude
@@ -186,16 +130,9 @@ export default function ClinicMap() {
     })
   }, [])
 
-  useEffect(() => {
-    fetchClinics(position[0], position[1])
-  }, [keyword])
-
-  // ===============================
-  // UI
-  // ===============================
   return (
     <div>
-      {/* パネル */}
+      {/* ================= UIパネル ================= */}
       <div
         style={{
           position: 'absolute',
@@ -209,6 +146,7 @@ export default function ClinicMap() {
           boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
         }}
       >
+        {/* 検索 */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
           <input
             value={searchText}
@@ -236,6 +174,7 @@ export default function ClinicMap() {
           </button>
         </div>
 
+        {/* 診療科 */}
         <div style={{ fontWeight: 'bold', marginBottom: 10 }}>
           診療科
         </div>
@@ -244,7 +183,10 @@ export default function ClinicMap() {
           {categories.map((cat) => (
             <button
               key={cat.keyword}
-              onClick={() => setKeyword(cat.keyword)}
+              onClick={() => {
+                setKeyword(cat.keyword)
+                fetchClinics(position[0], position[1], cat.keyword)
+              }}
               style={{
                 padding: '8px 12px',
                 border: '1px solid #ccc',
@@ -262,7 +204,7 @@ export default function ClinicMap() {
         </div>
       </div>
 
-      {/* 地図 */}
+      {/* ================= 地図 ================= */}
       <MapContainer
         center={position}
         zoom={14}
@@ -271,15 +213,12 @@ export default function ClinicMap() {
       >
         <ZoomControl position="topright" />
 
-        <ChangeMapCenter position={position} />
-
-        <MapWatcher onMove={(lat, lng) => fetchClinics(lat, lng)} />
-
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
+        {/* ピン */}
         {clinics.map((clinic) => (
           <Marker
             key={clinic.place_id}
@@ -287,14 +226,49 @@ export default function ClinicMap() {
               clinic.geometry.location.lat,
               clinic.geometry.location.lng,
             ]}
-            icon={clinic.opening_hours?.open_now ? redIcon : blackIcon}
+            icon={
+              clinic.opening_hours?.open_now
+                ? redIcon
+                : defaultIcon
+            }
           >
             <Popup>
               <b>{clinic.name}</b>
               <br />
               {clinic.vicinity}
+              <br /><br />
+
+              <div>⭐ {clinic.rating ?? 'なし'}</div>
+              <div>レビュー {clinic.user_ratings_total ?? 0}</div>
+
+              <div
+                style={{
+                  color: clinic.opening_hours?.open_now
+                    ? 'red'
+                    : 'black',
+                  fontWeight: 'bold',
+                }}
+              >
+                {clinic.opening_hours?.open_now
+                  ? '🟢 診療中'
+                  : '⚫ 時間外'}
+              </div>
+
               <br />
-              ⭐ {clinic.rating || 'なし'}
+
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                  clinic.name + ' ' + clinic.vicinity
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: '#2563eb',
+                  fontWeight: 'bold',
+                }}
+              >
+                Google Mapsで開く
+              </a>
             </Popup>
           </Marker>
         ))}

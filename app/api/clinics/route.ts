@@ -8,52 +8,51 @@ export async function GET(req: Request) {
   const keywordInput = searchParams.get('keyword')
 
   if (!lat || !lng) {
-    return NextResponse.json({
-      error: 'missing params',
-    })
+    return NextResponse.json({ error: 'missing params' })
   }
 
-  const apiKey =
-    process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY
 
   const keywords = keywordInput
     ? [keywordInput]
     : [
         '病院',
         'クリニック',
-        '医院',
         '内科',
         '小児科',
         '耳鼻科',
         '皮膚科',
-        'メディカル',
-        '記念クリニック',
       ]
 
   let allResults: any[] = []
 
+  // =========================
+  // ① Nearby Search（安定枠）
+  // =========================
+  try {
+    const nearbyUrl =
+      `https://maps.googleapis.com/maps/api/place/nearbysearch/json` +
+      `?location=${lat},${lng}` +
+      `&radius=3000` +
+      `&type=hospital` +
+      `&language=ja` +
+      `&key=${apiKey}`
+
+    const res = await fetch(nearbyUrl)
+    const data = await res.json()
+
+    if (data.results) {
+      allResults.push(...data.results)
+    }
+  } catch (err) {
+    console.error('nearby error', err)
+  }
+
+  // =========================
+  // ② Text Search（補助）
+  // =========================
   for (const keyword of keywords) {
     try {
-      // Nearby Search
-      const nearbyUrl =
-        `https://maps.googleapis.com/maps/api/place/nearbysearch/json` +
-        `?location=${lat},${lng}` +
-        `&radius=15000` +
-        `&keyword=${encodeURIComponent(keyword)}` +
-        `&language=ja` +
-        `&key=${apiKey}`
-
-      const nearbyRes = await fetch(nearbyUrl)
-      const nearbyData = await nearbyRes.json()
-
-      if (nearbyData.results) {
-        allResults = [
-          ...allResults,
-          ...nearbyData.results,
-        ]
-      }
-
-      // Text Search（追加）
       const textUrl =
         `https://maps.googleapis.com/maps/api/place/textsearch/json` +
         `?query=${encodeURIComponent(keyword)}` +
@@ -62,31 +61,54 @@ export async function GET(req: Request) {
         `&language=ja` +
         `&key=${apiKey}`
 
-      const textRes = await fetch(textUrl)
-      const textData = await textRes.json()
+      const res = await fetch(textUrl)
+      const data = await res.json()
 
-      if (textData.results) {
-        allResults = [
-          ...allResults,
-          ...textData.results,
-        ]
+      if (data.results) {
+        allResults.push(...data.results)
       }
     } catch (err) {
-      console.error(err)
+      console.error('text error', err)
     }
   }
 
-  // 重複削除
+  // =========================
+  // ③ 重複削除
+  // =========================
   const uniqueResults = Array.from(
-    new Map(
-      allResults.map((place) => [
-        place.place_id,
-        place,
-      ])
-    ).values()
+    new Map(allResults.map((p) => [p.place_id, p])).values()
   )
 
+  // =========================
+  // ④ Place Details（評価・営業時間補完）
+  // =========================
+  const detailedResults = await Promise.all(
+    uniqueResults.map(async (place) => {
+      try {
+        const detailUrl =
+          `https://maps.googleapis.com/maps/api/place/details/json` +
+          `?place_id=${place.place_id}` +
+          `&fields=name,rating,user_ratings_total,opening_hours,formatted_address,geometry` +
+          `&language=ja` +
+          `&key=${apiKey}`
+
+        const res = await fetch(detailUrl)
+        const data = await res.json()
+
+        return {
+          ...place,
+          ...data.result,
+        }
+      } catch (err) {
+        return place
+      }
+    })
+  )
+
+  // =========================
+  // ⑤ return
+  // =========================
   return NextResponse.json({
-    results: uniqueResults,
+    results: detailedResults,
   })
 }
