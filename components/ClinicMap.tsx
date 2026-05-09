@@ -1,12 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, ZoomControl } from 'react-leaflet'
-import L from 'leaflet'
 
-// any回避
-const SafeMapContainer = MapContainer as any
-const SafeMarker = Marker as any
+// ★全部 any 化（ここ重要）
+import * as RL from 'react-leaflet'
+const MapContainer = RL.MapContainer as any
+const TileLayer = RL.TileLayer as any
+const Marker = RL.Marker as any
+const Popup = RL.Popup as any
+const useMapEvents = RL.useMapEvents as any
+const ZoomControl = RL.ZoomControl as any
+
+import L from 'leaflet'
 
 type Clinic = {
   place_id: string
@@ -53,6 +58,7 @@ const categories = [
   { label: '皮膚科', keyword: '皮膚科' },
 ]
 
+// 地図移動監視
 function MapWatcher({ onMove }: { onMove: (lat: number, lng: number) => void }) {
   useMapEvents({
     moveend: (e: any) => {
@@ -61,14 +67,18 @@ function MapWatcher({ onMove }: { onMove: (lat: number, lng: number) => void }) 
       onMove(center.lat, center.lng)
     },
   })
+
   return null
 }
 
+// 中心移動
 function ChangeMapCenter({ position }: { position: [number, number] }) {
   const map = useMapEvents({})
+
   useEffect(() => {
     map.setView(position)
   }, [position, map])
+
   return null
 }
 
@@ -79,22 +89,19 @@ export default function ClinicMap() {
   const [searchText, setSearchText] = useState('')
 
   async function fetchClinics(lat: number, lng: number, searchKeyword = keyword) {
-    try {
-      const res = await fetch(`/api/clinics?lat=${lat}&lng=${lng}&keyword=${searchKeyword}`)
-      const data = await res.json()
-      setClinics(data.results || [])
-    } catch (err) {
-      console.error(err)
-    }
+    const res = await fetch(
+      `/api/clinics?lat=${lat}&lng=${lng}&keyword=${searchKeyword}`
+    )
+    const data = await res.json()
+    setClinics(data.results || [])
   }
 
   async function searchPlace() {
-    if (!searchText) return
-
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchText)}`
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        searchText
+      )}`
     )
-
     const data = await res.json()
 
     if (data.length > 0) {
@@ -108,15 +115,12 @@ export default function ClinicMap() {
   }
 
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude
-        const lng = pos.coords.longitude
-        setPosition([lat, lng])
-        fetchClinics(lat, lng)
-      },
-      () => alert('位置情報を許可してください')
-    )
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const lat = pos.coords.latitude
+      const lng = pos.coords.longitude
+      setPosition([lat, lng])
+      fetchClinics(lat, lng)
+    })
   }, [])
 
   useEffect(() => {
@@ -126,66 +130,46 @@ export default function ClinicMap() {
   return (
     <div>
       {/* UI */}
-      <div style={{
-        position: 'absolute',
-        zIndex: 1000,
-        top: 10,
-        left: 10,
-        background: 'white',
-        padding: 12,
-        borderRadius: 12,
-        width: 340,
-      }}>
-        <input
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          placeholder="地名を検索"
-        />
+      <div style={{ position: 'absolute', zIndex: 1000, top: 10, left: 10, background: 'white', padding: 12 }}>
+        <input value={searchText} onChange={(e) => setSearchText(e.target.value)} />
         <button onClick={searchPlace}>検索</button>
-
-        <div>
-          {categories.map((c) => (
-            <button key={c.keyword} onClick={() => setKeyword(c.keyword)}>
-              {c.label}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* 地図 */}
-      <SafeMapContainer center={position} zoom={14} zoomControl={false}
-        style={{ height: '100vh', width: '100%' }}>
-
+      <MapContainer
+        center={position}
+        zoom={14}
+        zoomControl={false}
+        style={{ height: '100vh', width: '100%' }}
+      >
         <ZoomControl position="topright" />
+
         <ChangeMapCenter position={position} />
+
         <MapWatcher onMove={(lat, lng) => fetchClinics(lat, lng)} />
 
         <TileLayer
-          attribution="&copy; OpenStreetMap"
+          attribution="&copy; OpenStreetMap contributors"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
         {clinics.map((clinic) => (
-          <SafeMarker
+          <Marker
             key={clinic.place_id}
             position={[
               clinic.geometry.location.lat,
               clinic.geometry.location.lng,
             ]}
-            icon={
-              clinic.opening_hours?.open_now
-                ? redIcon
-                : blackIcon
-            }
+            icon={clinic.opening_hours?.open_now ? redIcon : blackIcon}
           >
             <Popup>
               <b>{clinic.name}</b>
               <br />
               {clinic.vicinity}
             </Popup>
-          </SafeMarker>
+          </Marker>
         ))}
-      </SafeMapContainer>
+      </MapContainer>
     </div>
   )
 }
