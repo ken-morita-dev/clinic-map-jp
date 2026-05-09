@@ -11,7 +11,7 @@ import {
   ZoomControl,
 } from 'react-leaflet'
 
-import L from 'leaflet'
+import L, { LeafletMouseEvent } from 'leaflet'
 
 type Clinic = {
   place_id: string
@@ -62,12 +62,11 @@ type MapWatcherProps = {
   onMove: (lat: number, lng: number) => void
 }
 
-function MapWatcher({
-  onMove,
-}: MapWatcherProps) {
+function MapWatcher({ onMove }: MapWatcherProps) {
   useMapEvents({
-    moveend: (e: any) => {
-      const center = e.target.getCenter()
+    moveend: (e: LeafletMouseEvent) => {
+      const map = e.target as any
+      const center = map.getCenter()
 
       onMove(center.lat, center.lng)
     },
@@ -93,14 +92,13 @@ function ChangeMapCenter({
 export default function ClinicMap() {
   const [clinics, setClinics] = useState<Clinic[]>([])
 
-  const [position, setPosition] = useState<
-    [number, number]
-  >([35.4437, 139.638])
+  const [position, setPosition] = useState<[number, number]>([
+    35.4437,
+    139.638,
+  ])
 
   const [keyword, setKeyword] = useState('')
-
-  const [searchText, setSearchText] =
-    useState('')
+  const [searchText, setSearchText] = useState('')
 
   async function fetchClinics(
     lat: number,
@@ -113,7 +111,6 @@ export default function ClinicMap() {
       )
 
       const data = await res.json()
-
       setClinics(data.results || [])
     } catch (err) {
       console.error(err)
@@ -137,7 +134,6 @@ export default function ClinicMap() {
         const lng = parseFloat(data[0].lon)
 
         setPosition([lat, lng])
-
         fetchClinics(lat, lng)
       } else {
         alert('場所が見つかりません')
@@ -154,7 +150,6 @@ export default function ClinicMap() {
         const lng = pos.coords.longitude
 
         setPosition([lat, lng])
-
         fetchClinics(lat, lng)
       },
       () => {
@@ -169,6 +164,7 @@ export default function ClinicMap() {
 
   return (
     <div>
+      {/* UIパネル */}
       <div
         style={{
           position: 'absolute',
@@ -179,28 +175,18 @@ export default function ClinicMap() {
           padding: '12px',
           borderRadius: '12px',
           width: '340px',
-          boxShadow:
-            '0 2px 10px rgba(0,0,0,0.2)',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            gap: '8px',
-            marginBottom: '12px',
-          }}
-        >
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           <input
-            type="text"
-            placeholder="地名を検索"
             value={searchText}
-            onChange={(e) =>
-              setSearchText(e.target.value)
-            }
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="地名を検索"
             style={{
               flex: 1,
-              padding: '8px',
-              borderRadius: '8px',
+              padding: 8,
+              borderRadius: 8,
               border: '1px solid #ccc',
             }}
           />
@@ -209,11 +195,10 @@ export default function ClinicMap() {
             onClick={searchPlace}
             style={{
               padding: '8px 12px',
-              borderRadius: '8px',
-              border: 'none',
+              borderRadius: 8,
               background: '#2563eb',
               color: 'white',
-              fontWeight: 'bold',
+              border: 'none',
               cursor: 'pointer',
             }}
           >
@@ -221,43 +206,24 @@ export default function ClinicMap() {
           </button>
         </div>
 
-        <div
-          style={{
-            fontWeight: 'bold',
-            marginBottom: '10px',
-            fontSize: '16px',
-          }}
-        >
-          診療科を選択
+        <div style={{ fontWeight: 'bold', marginBottom: 10 }}>
+          診療科
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '8px',
-          }}
-        >
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {categories.map((cat) => (
             <button
               key={cat.keyword}
-              onClick={() =>
-                setKeyword(cat.keyword)
-              }
+              onClick={() => setKeyword(cat.keyword)}
               style={{
-                padding: '8px 12px',
-                borderRadius: '8px',
+                padding: '6px 10px',
+                borderRadius: 8,
                 border: '1px solid #ccc',
                 background:
-                  keyword === cat.keyword
-                    ? '#2563eb'
-                    : 'white',
+                  keyword === cat.keyword ? '#2563eb' : 'white',
                 color:
-                  keyword === cat.keyword
-                    ? 'white'
-                    : 'black',
+                  keyword === cat.keyword ? 'white' : 'black',
                 cursor: 'pointer',
-                fontWeight: 'bold',
               }}
             >
               {cat.label}
@@ -266,116 +232,70 @@ export default function ClinicMap() {
         </div>
       </div>
 
+      {/* 地図 */}
       <MapContainer
         center={position}
         zoom={14}
         zoomControl={false}
-        style={{
-          height: '100vh',
-          width: '100%',
-        }}
+        style={{ height: '100vh', width: '100%' }}
       >
         <ZoomControl position="topright" />
 
-        <ChangeMapCenter
-          position={position}
-        />
+        <ChangeMapCenter position={position} />
 
         <MapWatcher
-          onMove={(lat, lng) => {
-            fetchClinics(lat, lng)
-          }}
+          onMove={(lat, lng) => fetchClinics(lat, lng)}
         />
 
         <TileLayer
-          attribution='&copy; OpenStreetMap contributors'
-          url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+          attribution="&copy; OpenStreetMap contributors"
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
         {clinics.map((clinic) => (
           <Marker
             key={clinic.place_id}
+            position={[
+              clinic.geometry.location.lat,
+              clinic.geometry.location.lng,
+            ]}
             icon={
               clinic.opening_hours?.open_now
                 ? redIcon
                 : blackIcon
             }
-            position={[
-              clinic.geometry.location.lat,
-              clinic.geometry.location.lng,
-            ]}
           >
             <Popup>
-              <div
+              <b>{clinic.name}</b>
+              <br />
+              {clinic.vicinity}
+              <br />
+              ⭐ {clinic.rating || 'なし'}
+              <br />
+              レビュー {clinic.user_ratings_total || 0}
+              <br />
+              <span
                 style={{
-                  minWidth: '220px',
+                  color: clinic.opening_hours?.open_now
+                    ? 'red'
+                    : 'black',
                 }}
               >
-                <div
-                  style={{
-                    fontWeight: 'bold',
-                    fontSize: '16px',
-                    marginBottom: '6px',
-                  }}
-                >
-                  {clinic.name}
-                </div>
+                {clinic.opening_hours?.open_now
+                  ? '診療中'
+                  : '時間外'}
+              </span>
 
-                <div
-                  style={{
-                    marginBottom: '6px',
-                  }}
-                >
-                  {clinic.vicinity}
-                </div>
+              <br /><br />
 
-                <div>
-                  ⭐ {clinic.rating || '評価なし'}
-                </div>
-
-                <div>
-                  レビュー数：
-                  {clinic.user_ratings_total || 0}
-                </div>
-
-                <div
-                  style={{
-                    marginTop: '6px',
-                    fontWeight: 'bold',
-                    color:
-                      clinic.opening_hours?.open_now
-                        ? 'red'
-                        : 'black',
-                  }}
-                >
-                  {clinic.opening_hours?.open_now
-                    ? '● 診療中'
-                    : '● 診療時間外'}
-                </div>
-
-                <div
-                  style={{
-                    marginTop: '12px',
-                  }}
-                >
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                      clinic.name +
-                        ' ' +
-                        clinic.vicinity
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      color: '#2563eb',
-                      fontWeight: 'bold',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    Google Mapsで開く
-                  </a>
-                </div>
-              </div>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                  clinic.name + ' ' + clinic.vicinity
+                )}`}
+                target="_blank"
+              >
+                Google Mapsで開く
+              </a>
             </Popup>
           </Marker>
         ))}
