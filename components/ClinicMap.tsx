@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-
 import {
   MapContainer,
   TileLayer,
@@ -11,9 +10,10 @@ import {
   ZoomControl,
 } from 'react-leaflet'
 
-const SafeMapContainer = MapContainer as any
+import L from 'leaflet'
 
-import L, { LeafletMouseEvent } from 'leaflet'
+// TypeScriptエラー回避（重要）
+const SafeMapContainer = MapContainer as any
 
 type Clinic = {
   place_id: string
@@ -32,6 +32,7 @@ type Clinic = {
   }
 }
 
+// ピン（営業中）
 const redIcon = new L.Icon({
   iconUrl:
     'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
@@ -41,6 +42,7 @@ const redIcon = new L.Icon({
   iconAnchor: [12, 41],
 })
 
+// ピン（休診）
 const blackIcon = new L.Icon({
   iconUrl:
     'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png',
@@ -52,24 +54,24 @@ const blackIcon = new L.Icon({
 
 const categories = [
   { label: '全部', keyword: '' },
-  { label: '🩺 内科', keyword: '内科' },
-  { label: '👶 小児科', keyword: '小児科' },
-  { label: '👂 耳鼻科', keyword: '耳鼻科' },
-  { label: '👁 眼科', keyword: '眼科' },
-  { label: '🦴 整形外科', keyword: '整形外科' },
-  { label: '🧴 皮膚科', keyword: '皮膚科' },
+  { label: '内科', keyword: '内科' },
+  { label: '小児科', keyword: '小児科' },
+  { label: '耳鼻科', keyword: '耳鼻科' },
+  { label: '眼科', keyword: '眼科' },
+  { label: '整形外科', keyword: '整形外科' },
+  { label: '皮膚科', keyword: '皮膚科' },
 ]
 
-type MapWatcherProps = {
+// 地図移動監視
+function MapWatcher({
+  onMove,
+}: {
   onMove: (lat: number, lng: number) => void
-}
-
-function MapWatcher({ onMove }: MapWatcherProps) {
+}) {
   useMapEvents({
-    moveend: (e: LeafletMouseEvent) => {
-      const map = e.target as any
+    moveend: (e: any) => {
+      const map = e.target
       const center = map.getCenter()
-
       onMove(center.lat, center.lng)
     },
   })
@@ -77,6 +79,7 @@ function MapWatcher({ onMove }: MapWatcherProps) {
   return null
 }
 
+// 中心移動
 function ChangeMapCenter({
   position,
 }: {
@@ -93,12 +96,10 @@ function ChangeMapCenter({
 
 export default function ClinicMap() {
   const [clinics, setClinics] = useState<Clinic[]>([])
-
   const [position, setPosition] = useState<[number, number]>([
     35.4437,
     139.638,
   ])
-
   const [keyword, setKeyword] = useState('')
   const [searchText, setSearchText] = useState('')
 
@@ -111,7 +112,6 @@ export default function ClinicMap() {
       const res = await fetch(
         `/api/clinics?lat=${lat}&lng=${lng}&keyword=${searchKeyword}`
       )
-
       const data = await res.json()
       setClinics(data.results || [])
     } catch (err) {
@@ -147,16 +147,14 @@ export default function ClinicMap() {
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
+      (pos) => {
         const lat = pos.coords.latitude
         const lng = pos.coords.longitude
 
         setPosition([lat, lng])
         fetchClinics(lat, lng)
       },
-      () => {
-        alert('位置情報を許可してください')
-      }
+      () => alert('位置情報を許可してください')
     )
   }, [])
 
@@ -174,9 +172,9 @@ export default function ClinicMap() {
           top: 10,
           left: 10,
           background: 'white',
-          padding: '12px',
-          borderRadius: '12px',
-          width: '340px',
+          padding: 12,
+          borderRadius: 12,
+          width: 340,
           boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
         }}
       >
@@ -192,7 +190,6 @@ export default function ClinicMap() {
               border: '1px solid #ccc',
             }}
           />
-
           <button
             onClick={searchPlace}
             style={{
@@ -201,7 +198,6 @@ export default function ClinicMap() {
               background: '#2563eb',
               color: 'white',
               border: 'none',
-              cursor: 'pointer',
             }}
           >
             検索
@@ -223,9 +219,7 @@ export default function ClinicMap() {
                 border: '1px solid #ccc',
                 background:
                   keyword === cat.keyword ? '#2563eb' : 'white',
-                color:
-                  keyword === cat.keyword ? 'white' : 'black',
-                cursor: 'pointer',
+                color: keyword === cat.keyword ? 'white' : 'black',
               }}
             >
               {cat.label}
@@ -234,16 +228,8 @@ export default function ClinicMap() {
         </div>
       </div>
 
-      {/* 地図 */}
+      {/* 地図（完全修正版ここ） */}
       <SafeMapContainer
-  center={position}
-  zoom={14}
-  zoomControl={false}
-  style={{
-    height: '100vh',
-    width: '100%',
-  }}
->
         center={position}
         zoom={14}
         zoomControl={false}
@@ -253,9 +239,7 @@ export default function ClinicMap() {
 
         <ChangeMapCenter position={position} />
 
-        <MapWatcher
-          onMove={(lat, lng) => fetchClinics(lat, lng)}
-        />
+        <MapWatcher onMove={(lat, lng) => fetchClinics(lat, lng)} />
 
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
@@ -282,7 +266,7 @@ export default function ClinicMap() {
               <br />
               ⭐ {clinic.rating || 'なし'}
               <br />
-              レビュー {clinic.user_ratings_total || 0}
+              レビュー数 {clinic.user_ratings_total || 0}
               <br />
               <span
                 style={{
@@ -295,21 +279,10 @@ export default function ClinicMap() {
                   ? '診療中'
                   : '時間外'}
               </span>
-
-              <br /><br />
-
-              <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                  clinic.name + ' ' + clinic.vicinity
-                )}`}
-                target="_blank"
-              >
-                Google Mapsで開く
-              </a>
             </Popup>
           </Marker>
         ))}
-      </MapContainer>
+      </SafeMapContainer>
     </div>
   )
 }
