@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react'
 
-// ★全部 any 化（ここ重要）
+// ===============================
+// React-Leaflet（全部 any 化で安定化）
+// ===============================
 import * as RL from 'react-leaflet'
 const MapContainer = RL.MapContainer as any
 const TileLayer = RL.TileLayer as any
@@ -13,6 +15,24 @@ const ZoomControl = RL.ZoomControl as any
 
 import L from 'leaflet'
 
+// ===============================
+// ★ Leaflet ピン完全復活セット
+// ===============================
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+import markerIcon from 'leaflet/dist/images/marker-icon.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+
+delete (L.Icon.Default.prototype as any)._getIconUrl
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+})
+
+// ===============================
+// 型
+// ===============================
 type Clinic = {
   place_id: string
   name: string
@@ -30,6 +50,9 @@ type Clinic = {
   }
 }
 
+// ===============================
+// カスタムピン
+// ===============================
 const redIcon = new L.Icon({
   iconUrl:
     'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
@@ -48,6 +71,9 @@ const blackIcon = new L.Icon({
   iconAnchor: [12, 41],
 })
 
+// ===============================
+// カテゴリ
+// ===============================
 const categories = [
   { label: '全部', keyword: '' },
   { label: '内科', keyword: '内科' },
@@ -58,7 +84,9 @@ const categories = [
   { label: '皮膚科', keyword: '皮膚科' },
 ]
 
-// 地図移動監視
+// ===============================
+// 地図監視
+// ===============================
 function MapWatcher({ onMove }: { onMove: (lat: number, lng: number) => void }) {
   useMapEvents({
     moveend: (e: any) => {
@@ -71,7 +99,9 @@ function MapWatcher({ onMove }: { onMove: (lat: number, lng: number) => void }) 
   return null
 }
 
+// ===============================
 // 中心移動
+// ===============================
 function ChangeMapCenter({ position }: { position: [number, number] }) {
   const map = useMapEvents({})
 
@@ -82,12 +112,19 @@ function ChangeMapCenter({ position }: { position: [number, number] }) {
   return null
 }
 
+// ===============================
+// メイン
+// ===============================
 export default function ClinicMap() {
   const [clinics, setClinics] = useState<Clinic[]>([])
-  const [position, setPosition] = useState<[number, number]>([35.4437, 139.638])
+  const [position, setPosition] = useState<[number, number]>([
+    35.4437,
+    139.638,
+  ])
   const [keyword, setKeyword] = useState('')
   const [searchText, setSearchText] = useState('')
 
+  // 取得
   async function fetchClinics(lat: number, lng: number, searchKeyword = keyword) {
     const res = await fetch(
       `/api/clinics?lat=${lat}&lng=${lng}&keyword=${searchKeyword}`
@@ -96,6 +133,7 @@ export default function ClinicMap() {
     setClinics(data.results || [])
   }
 
+  // 検索
   async function searchPlace() {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
@@ -114,6 +152,7 @@ export default function ClinicMap() {
     }
   }
 
+  // 初期位置
   useEffect(() => {
     navigator.geolocation.getCurrentPosition((pos) => {
       const lat = pos.coords.latitude
@@ -123,16 +162,43 @@ export default function ClinicMap() {
     })
   }, [])
 
+  // カテゴリ変更
   useEffect(() => {
     fetchClinics(position[0], position[1])
   }, [keyword])
 
   return (
     <div>
-      {/* UI */}
-      <div style={{ position: 'absolute', zIndex: 1000, top: 10, left: 10, background: 'white', padding: 12 }}>
-        <input value={searchText} onChange={(e) => setSearchText(e.target.value)} />
+      {/* UIパネル */}
+      <div
+        style={{
+          position: 'absolute',
+          zIndex: 1000,
+          top: 10,
+          left: 10,
+          background: 'white',
+          padding: 12,
+          borderRadius: 12,
+        }}
+      >
+        <input
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          placeholder="地名検索"
+        />
         <button onClick={searchPlace}>検索</button>
+
+        <div style={{ marginTop: 10 }}>
+          {categories.map((c) => (
+            <button
+              key={c.keyword}
+              onClick={() => setKeyword(c.keyword)}
+              style={{ margin: 4 }}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 地図 */}
