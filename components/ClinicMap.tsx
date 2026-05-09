@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 
 // ===============================
-// React-Leaflet（全部 any 化で安定化）
+// React-Leaflet
 // ===============================
 import {
   MapContainer,
@@ -17,7 +17,7 @@ import {
 import L from 'leaflet'
 
 // ===============================
-// ★ Leaflet ピン完全復活セット
+// Leaflet標準ピン復活（重要）
 // ===============================
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
@@ -52,7 +52,7 @@ type Clinic = {
 }
 
 // ===============================
-// カスタムピン
+// ピン（営業中 / 休診）
 // ===============================
 const redIcon = new L.Icon({
   iconUrl:
@@ -88,7 +88,11 @@ const categories = [
 // ===============================
 // 地図監視
 // ===============================
-function MapWatcher({ onMove }: { onMove: (lat: number, lng: number) => void }) {
+function MapWatcher({
+  onMove,
+}: {
+  onMove: (lat: number, lng: number) => void
+}) {
   useMapEvents({
     moveend: (e: any) => {
       const map = e.target
@@ -103,7 +107,11 @@ function MapWatcher({ onMove }: { onMove: (lat: number, lng: number) => void }) 
 // ===============================
 // 中心移動
 // ===============================
-function ChangeMapCenter({ position }: { position: [number, number] }) {
+function ChangeMapCenter({
+  position,
+}: {
+  position: [number, number]
+}) {
   const map = useMapEvents({})
 
   useEffect(() => {
@@ -125,27 +133,40 @@ export default function ClinicMap() {
   const [keyword, setKeyword] = useState('')
   const [searchText, setSearchText] = useState('')
 
-  // 取得
-  async function fetchClinics(lat: number, lng: number, searchKeyword = keyword) {
+  // ===============================
+  // API取得
+  // ===============================
+  async function fetchClinics(
+    lat: number,
+    lng: number,
+    searchKeyword = keyword
+  ) {
     const res = await fetch(
       `/api/clinics?lat=${lat}&lng=${lng}&keyword=${searchKeyword}`
     )
+
     const data = await res.json()
     setClinics(data.results || [])
   }
 
-  // 検索
+  // ===============================
+  // 地名検索
+  // ===============================
   async function searchPlace() {
+    if (!searchText) return
+
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
         searchText
       )}`
     )
+
     const data = await res.json()
 
     if (data.length > 0) {
       const lat = parseFloat(data[0].lat)
       const lng = parseFloat(data[0].lon)
+
       setPosition([lat, lng])
       fetchClinics(lat, lng)
     } else {
@@ -153,7 +174,9 @@ export default function ClinicMap() {
     }
   }
 
+  // ===============================
   // 初期位置
+  // ===============================
   useEffect(() => {
     navigator.geolocation.getCurrentPosition((pos) => {
       const lat = pos.coords.latitude
@@ -163,14 +186,16 @@ export default function ClinicMap() {
     })
   }, [])
 
-  // カテゴリ変更
   useEffect(() => {
     fetchClinics(position[0], position[1])
   }, [keyword])
 
+  // ===============================
+  // UI
+  // ===============================
   return (
     <div>
-      {/* UIパネル */}
+      {/* パネル */}
       <div
         style={{
           position: 'absolute',
@@ -180,31 +205,59 @@ export default function ClinicMap() {
           background: 'white',
           padding: 12,
           borderRadius: 12,
+          width: 340,
+          boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
         }}
       >
-        <input
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          placeholder="地名検索"
-        />
-        <button onClick={searchPlace}>検索</button>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          <input
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="地名検索"
+            style={{
+              flex: 1,
+              padding: 8,
+              border: '1px solid #ccc',
+              borderRadius: 8,
+            }}
+          />
+          <button
+            onClick={searchPlace}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 8,
+              background: '#2563eb',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            検索
+          </button>
+        </div>
 
-        <div style={{ marginTop: 10 }}>
-          {categories.map((c) => (
+        <div style={{ fontWeight: 'bold', marginBottom: 10 }}>
+          診療科
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {categories.map((cat) => (
             <button
-  key={cat.keyword}
-  onClick={() => setKeyword(cat.keyword)}
-  style={{
-    padding: '8px 12px',
-    border: '1px solid #ccc',   // ←これが枠線
-    borderRadius: 8,
-    background: keyword === cat.keyword ? '#2563eb' : 'white',
-    color: keyword === cat.keyword ? 'white' : 'black',
-    cursor: 'pointer',
-  }}
->
-  {cat.label}
-</button>
+              key={cat.keyword}
+              onClick={() => setKeyword(cat.keyword)}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #ccc',
+                borderRadius: 8,
+                background:
+                  keyword === cat.keyword ? '#2563eb' : 'white',
+                color:
+                  keyword === cat.keyword ? 'white' : 'black',
+                cursor: 'pointer',
+              }}
+            >
+              {cat.label}
+            </button>
           ))}
         </div>
       </div>
@@ -240,6 +293,8 @@ export default function ClinicMap() {
               <b>{clinic.name}</b>
               <br />
               {clinic.vicinity}
+              <br />
+              ⭐ {clinic.rating || 'なし'}
             </Popup>
           </Marker>
         ))}
