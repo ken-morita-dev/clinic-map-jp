@@ -5,13 +5,14 @@ import { useEffect, useState } from 'react'
 // ===============================
 // React-Leaflet（全部 any 化で安定化）
 // ===============================
-import * as RL from 'react-leaflet'
-const MapContainer = RL.MapContainer as any
-const TileLayer = RL.TileLayer as any
-const Marker = RL.Marker as any
-const Popup = RL.Popup as any
-const useMapEvents = RL.useMapEvents as any
-const ZoomControl = RL.ZoomControl as any
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMapEvents,
+  ZoomControl,
+} from 'react-leaflet'
 
 import L from 'leaflet'
 
@@ -191,12 +192,19 @@ export default function ClinicMap() {
         <div style={{ marginTop: 10 }}>
           {categories.map((c) => (
             <button
-              key={c.keyword}
-              onClick={() => setKeyword(c.keyword)}
-              style={{ margin: 4 }}
-            >
-              {c.label}
-            </button>
+  key={cat.keyword}
+  onClick={() => setKeyword(cat.keyword)}
+  style={{
+    padding: '8px 12px',
+    border: '1px solid #ccc',   // ←これが枠線
+    borderRadius: 8,
+    background: keyword === cat.keyword ? '#2563eb' : 'white',
+    color: keyword === cat.keyword ? 'white' : 'black',
+    cursor: 'pointer',
+  }}
+>
+  {cat.label}
+</button>
           ))}
         </div>
       </div>
