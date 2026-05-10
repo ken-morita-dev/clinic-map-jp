@@ -260,9 +260,10 @@ export default function ClinicMap() {
 
       {/* ================= 地図 ================= */}
       <MapContainer
-        center={position}
-        zoom={14}
-        zoomControl={false}
+        key={`${position[0]}-${position[1]}-${clinics.length}`}
+  center={position}
+  zoom={14}
+  zoomControl={false}
         style={{
           height: '100vh',
           width: '100%',
