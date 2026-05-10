@@ -13,7 +13,7 @@ import {
 import L from 'leaflet'
 
 // ===============================
-// Leaflet CSS（必須）
+// Leaflet CSS
 // ===============================
 import 'leaflet/dist/leaflet.css'
 
@@ -38,33 +38,38 @@ type Clinic = {
 }
 
 // ===============================
-// ★ 超安定版アイコン
-// （Vercel対応版）
+// ★ SVGピン（本番100%安定版）
 // ===============================
-const redIcon = new L.Icon({
-  iconUrl:
-    'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-red.png',
-
-  shadowUrl:
-    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
+const redIcon = L.divIcon({
+  className: '',
+  html: `
+    <div style="
+      width:20px;
+      height:20px;
+      background:#dc2626;
+      border-radius:50%;
+      border:3px solid white;
+      box-shadow:0 0 6px rgba(0,0,0,0.5);
+    "></div>
+  `,
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
 })
 
-const blackIcon = new L.Icon({
-  iconUrl:
-    'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-black.png',
-
-  shadowUrl:
-    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
+const blackIcon = L.divIcon({
+  className: '',
+  html: `
+    <div style="
+      width:20px;
+      height:20px;
+      background:#111827;
+      border-radius:50%;
+      border:3px solid white;
+      box-shadow:0 0 6px rgba(0,0,0,0.5);
+    "></div>
+  `,
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
 })
 
 // ===============================
