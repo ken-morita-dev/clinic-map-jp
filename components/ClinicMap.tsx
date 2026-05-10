@@ -38,33 +38,37 @@ type Clinic = {
 }
 
 // ===============================
-// ★超重要：デフォルトピン（Vercel安定版）
-// ===============================
-const defaultIcon = new L.Icon({
-  iconUrl:
-    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl:
-    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl:
-    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-})
-
-// ===============================
-// ピン（診療中）
+// ★ 超安定版アイコン
+// （Vercel対応版）
 // ===============================
 const redIcon = new L.Icon({
   iconUrl:
-    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+    'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-red.png',
+
   shadowUrl:
     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+
   iconSize: [25, 41],
   iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+})
+
+const blackIcon = new L.Icon({
+  iconUrl:
+    'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-black.png',
+
+  shadowUrl:
+    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
 })
 
 // ===============================
-// カテゴリ
+// 診療科
 // ===============================
 const categories = [
   { label: '全部', keyword: '' },
@@ -81,55 +85,90 @@ const categories = [
 // ===============================
 export default function ClinicMap() {
   const [clinics, setClinics] = useState<Clinic[]>([])
+
   const [position, setPosition] = useState<[number, number]>([
     35.4437,
     139.638,
   ])
+
   const [keyword, setKeyword] = useState('')
   const [searchText, setSearchText] = useState('')
 
+  // ===============================
   // API取得
-  async function fetchClinics(lat: number, lng: number, kw = keyword) {
-    const res = await fetch(
-      `/api/clinics?lat=${lat}&lng=${lng}&keyword=${kw}`
-    )
-    const data = await res.json()
-    setClinics(data.results || [])
-  }
+  // ===============================
+  async function fetchClinics(
+    lat: number,
+    lng: number,
+    kw = keyword
+  ) {
+    try {
+      const res = await fetch(
+        `/api/clinics?lat=${lat}&lng=${lng}&keyword=${kw}`
+      )
 
-  // 地名検索
-  async function searchPlace() {
-    if (!searchText) return
+      const data = await res.json()
 
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-        searchText
-      )}`
-    )
+      console.log('clinics data', data)
 
-    const data = await res.json()
-
-    if (data.length > 0) {
-      const lat = parseFloat(data[0].lat)
-      const lng = parseFloat(data[0].lon)
-
-      setPosition([lat, lng])
-      fetchClinics(lat, lng)
-    } else {
-      alert('場所が見つかりません')
+      setClinics(data.results || [])
+    } catch (err) {
+      console.error(err)
     }
   }
 
+  // ===============================
+  // 地名検索
+  // ===============================
+  async function searchPlace() {
+    if (!searchText) return
+
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          searchText
+        )}`
+      )
+
+      const data = await res.json()
+
+      if (data.length > 0) {
+        const lat = parseFloat(data[0].lat)
+        const lng = parseFloat(data[0].lon)
+
+        setPosition([lat, lng])
+
+        fetchClinics(lat, lng)
+      } else {
+        alert('場所が見つかりません')
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  // ===============================
   // 初期位置
+  // ===============================
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const lat = pos.coords.latitude
-      const lng = pos.coords.longitude
-      setPosition([lat, lng])
-      fetchClinics(lat, lng)
-    })
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude
+        const lng = pos.coords.longitude
+
+        setPosition([lat, lng])
+
+        fetchClinics(lat, lng)
+      },
+      () => {
+        fetchClinics(position[0], position[1])
+      }
+    )
   }, [])
 
+  // ===============================
+  // UI
+  // ===============================
   return (
     <div>
       {/* ================= UIパネル ================= */}
@@ -159,6 +198,7 @@ export default function ClinicMap() {
               borderRadius: 8,
             }}
           />
+
           <button
             onClick={searchPlace}
             style={{
@@ -185,16 +225,25 @@ export default function ClinicMap() {
               key={cat.keyword}
               onClick={() => {
                 setKeyword(cat.keyword)
-                fetchClinics(position[0], position[1], cat.keyword)
+
+                fetchClinics(
+                  position[0],
+                  position[1],
+                  cat.keyword
+                )
               }}
               style={{
                 padding: '8px 12px',
                 border: '1px solid #ccc',
                 borderRadius: 8,
                 background:
-                  keyword === cat.keyword ? '#2563eb' : 'white',
+                  keyword === cat.keyword
+                    ? '#2563eb'
+                    : 'white',
                 color:
-                  keyword === cat.keyword ? 'white' : 'black',
+                  keyword === cat.keyword
+                    ? 'white'
+                    : 'black',
                 cursor: 'pointer',
               }}
             >
@@ -209,7 +258,10 @@ export default function ClinicMap() {
         center={position}
         zoom={14}
         zoomControl={false}
-        style={{ height: '100vh', width: '100%' }}
+        style={{
+          height: '100vh',
+          width: '100%',
+        }}
       >
         <ZoomControl position="topright" />
 
@@ -229,23 +281,34 @@ export default function ClinicMap() {
             icon={
               clinic.opening_hours?.open_now
                 ? redIcon
-                : defaultIcon
+                : blackIcon
             }
           >
             <Popup>
               <b>{clinic.name}</b>
-              <br />
-              {clinic.vicinity}
-              <br /><br />
 
-              <div>⭐ {clinic.rating ?? 'なし'}</div>
-              <div>レビュー {clinic.user_ratings_total ?? 0}</div>
+              <br />
+
+              {clinic.vicinity}
+
+              <br />
+              <br />
+
+              <div>
+                ⭐ {clinic.rating ?? 'なし'}
+              </div>
+
+              <div>
+                レビュー {clinic.user_ratings_total ?? 0}
+              </div>
 
               <div
                 style={{
-                  color: clinic.opening_hours?.open_now
-                    ? 'red'
-                    : 'black',
+                  color:
+                    clinic.opening_hours?.open_now
+                      ? 'red'
+                      : 'black',
+
                   fontWeight: 'bold',
                 }}
               >
